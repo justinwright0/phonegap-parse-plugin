@@ -19,6 +19,16 @@ var parsePlugin = {
         );
     },
 
+    getDeviceId: function(successCallback, errorCallback) {
+        cordova.exec(
+            successCallback,
+            errorCallback,
+            'ParsePlugin',
+            'getDeviceId',
+            []
+        );
+    },
+
     getInstallationObjectId: function(successCallback, errorCallback) {
         cordova.exec(
             successCallback,

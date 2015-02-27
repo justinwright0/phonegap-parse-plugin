@@ -14,6 +14,7 @@ import com.parse.PushService;
 public class ParsePlugin extends CordovaPlugin {
     public static final String ACTION_INITIALIZE = "initialize";
     public static final String ACTION_GET_INSTALLATION_ID = "getInstallationId";
+    public static final String ACTION_GET_DEVICE_ID = "getDeviceId";
     public static final String ACTION_GET_INSTALLATION_OBJECT_ID = "getInstallationObjectId";
     public static final String ACTION_GET_SUBSCRIPTIONS = "getSubscriptions";
     public static final String ACTION_SUBSCRIBE = "subscribe";
@@ -29,7 +30,10 @@ public class ParsePlugin extends CordovaPlugin {
             this.getInstallationId(callbackContext);
             return true;
         }
-
+        if (action.equals(ACTION_GET_DEVICE_ID)) {
+            this.getDeviceId(callbackContext);
+            return true;
+        }
         if (action.equals(ACTION_GET_INSTALLATION_OBJECT_ID)) {
             this.getInstallationObjectId(callbackContext);
             return true;
@@ -71,6 +75,15 @@ public class ParsePlugin extends CordovaPlugin {
             public void run() {
                 String installationId = ParseInstallation.getCurrentInstallation().getInstallationId();
                 callbackContext.success(installationId);
+            }
+        });
+    }
+
+    private void getDeviceId(final CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                String deviceToken = (String) ParseInstallation.getCurrentInstallation().get("deviceToken");
+                callbackContext.success(deviceToken);
             }
         });
     }
