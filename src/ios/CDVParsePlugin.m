@@ -6,14 +6,33 @@
 
 @implementation CDVParsePlugin
 
+@synthesize startCallbackID, notificationCallbackID;
+
 - (void)initialize: (CDVInvokedUrlCommand*)command
 {
-    CDVPluginResult* pluginResult = nil;
+    
     NSString *appId = [command.arguments objectAtIndex:0];
     NSString *clientKey = [command.arguments objectAtIndex:1];
     [Parse setApplicationId:appId clientKey:clientKey];
-    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    startCallbackID = command.callbackId;
+    notificationCallbackID = [command.arguments objectAtIndex:2];
+    
+    // Not sure if this is necessary
+    if ([[UIApplication sharedApplication] respondsToSelector:@selector(registerUserNotificationSettings:)]) {
+        UIUserNotificationSettings *settings =
+        [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert |
+         UIUserNotificationTypeBadge |
+         UIUserNotificationTypeSound
+                                          categories:nil];
+        [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
+        [[UIApplication sharedApplication] registerForRemoteNotifications];
+    }
+    else {
+        [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
+         UIRemoteNotificationTypeBadge |
+         UIRemoteNotificationTypeAlert |
+         UIRemoteNotificationTypeSound];
+    }
 }
 
 - (void)getInstallationId:(CDVInvokedUrlCommand*) command
@@ -38,6 +57,17 @@
     }];
 }
 
+- (void)getDeviceToken:(CDVInvokedUrlCommand*) command
+{
+    [self.commandDelegate runInBackground:^{
+        CDVPluginResult* pluginResult = nil;
+        PFInstallation *currentInstallation = [PFInstallation currentInstallation];
+        NSString *deviceID = currentInstallation.deviceToken;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:deviceID];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }];
+}
+
 - (void)getSubscriptions: (CDVInvokedUrlCommand *)command
 {
     NSArray *channels = [PFInstallation currentInstallation].channels;
@@ -47,22 +77,7 @@
 
 - (void)subscribe: (CDVInvokedUrlCommand *)command
 {
-    // Not sure if this is necessary
-    if ([[UIApplication sharedApplication] respondsToSelector:@selector(registerUserNotificationSettings:)]) {
-        UIUserNotificationSettings *settings =
-        [UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert |
-                                                     UIUserNotificationTypeBadge |
-                                                     UIUserNotificationTypeSound
-                                          categories:nil];
-        [[UIApplication sharedApplication] registerUserNotificationSettings:settings];
-        [[UIApplication sharedApplication] registerForRemoteNotifications];
-    }
-    else {
-        [[UIApplication sharedApplication] registerForRemoteNotificationTypes:
-            UIRemoteNotificationTypeBadge |
-            UIRemoteNotificationTypeAlert |
-            UIRemoteNotificationTypeSound];
-    }
+    
 
     CDVPluginResult* pluginResult = nil;
     PFInstallation *currentInstallation = [PFInstallation currentInstallation];
@@ -121,6 +136,9 @@ void MethodSwizzle(Class c, SEL originalSelector) {
     PFInstallation *currentInstallation = [PFInstallation currentInstallation];
     [currentInstallation setDeviceTokenFromData:newDeviceToken];
     [currentInstallation saveInBackground];
+    CDVParsePlugin* pplug = [self.viewController.pluginObjects objectForKey:@"CDVParsePlugin"];
+    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [self.viewController.commandDelegate sendPluginResult:pluginResult callbackId:pplug.startCallbackID];
 }
 
 - (void)noop_application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo
@@ -131,7 +149,13 @@ void MethodSwizzle(Class c, SEL originalSelector) {
 {
     // Call existing method
     [self swizzled_application:application didReceiveRemoteNotification:userInfo];
-    [PFPush handlePush:userInfo];
+    //encode dictionary to json data for callback to Cordova
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:userInfo options:0 error:&error];
+    NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    CDVParsePlugin* pplug = [self.viewController.pluginObjects objectForKey:@"CDVParsePlugin"];
+    NSString * jsCallBack = [NSString stringWithFormat:@"%@(%@);", pplug.notificationCallbackID, jsonString];
+    [self.viewController.webView stringByEvaluatingJavaScriptFromString:jsCallBack];
 }
 
 @end

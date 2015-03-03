@@ -1,5 +1,5 @@
 var parsePlugin = {
-    initialize: function(appId, clientKey, successCallback, errorCallback) {
+    initialize: function(appId, clientKey, notificationCallback, successCallback, errorCallback) {
         cordova.exec(
             successCallback,
             errorCallback,
@@ -19,12 +19,12 @@ var parsePlugin = {
         );
     },
 
-    getDeviceId: function(successCallback, errorCallback) {
+    getDeviceToken: function(successCallback, errorCallback) {
         cordova.exec(
             successCallback,
             errorCallback,
             'ParsePlugin',
-            'getDeviceId',
+            'getDeviceToken',
             []
         );
     },

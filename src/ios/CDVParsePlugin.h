@@ -1,7 +1,12 @@
 #import <Cordova/CDV.h>
 #import "AppDelegate.h"
 
-@interface CDVParsePlugin: CDVPlugin
+@interface CDVParsePlugin: CDVPlugin{
+    NSString* startCallbackID;
+}
+
+@property (nonatomic, strong) NSString* startCallbackID;
+@property (nonatomic, strong) NSString* notificationCallbackID;
 
 - (void)initialize: (CDVInvokedUrlCommand*)command;
 - (void)getInstallationId: (CDVInvokedUrlCommand*)command;
