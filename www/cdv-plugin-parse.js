@@ -5,7 +5,7 @@ var parsePlugin = {
             errorCallback,
             'ParsePlugin',
             'initialize',
-            [appId, clientKey]
+            [appId, clientKey, notificationCallback]
         );
     },
 

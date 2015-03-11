@@ -1,5 +1,7 @@
 package org.apache.cordova.core;
 
+import android.util.Log;
+
 import java.util.Set;
 
 import org.apache.cordova.CallbackContext;
@@ -8,13 +10,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import com.parse.Parse;
+import com.parse.ParseException;
 import com.parse.ParseInstallation;
+import com.parse.ParsePush;
 import com.parse.PushService;
+import com.parse.SaveCallback;
 
 public class ParsePlugin extends CordovaPlugin {
+    private static final String TAG = "ParsePlugin";
+
     public static final String ACTION_INITIALIZE = "initialize";
     public static final String ACTION_GET_INSTALLATION_ID = "getInstallationId";
-    public static final String ACTION_GET_DEVICE_ID = "getDeviceId";
+    public static final String ACTION_GET_DEVICE_TOKEN = "getDeviceToken";
     public static final String ACTION_GET_INSTALLATION_OBJECT_ID = "getInstallationObjectId";
     public static final String ACTION_GET_SUBSCRIPTIONS = "getSubscriptions";
     public static final String ACTION_SUBSCRIBE = "subscribe";
@@ -30,8 +37,8 @@ public class ParsePlugin extends CordovaPlugin {
             this.getInstallationId(callbackContext);
             return true;
         }
-        if (action.equals(ACTION_GET_DEVICE_ID)) {
-            this.getDeviceId(callbackContext);
+        if (action.equals(ACTION_GET_DEVICE_TOKEN)) {
+            this.getDeviceToken(callbackContext);
             return true;
         }
         if (action.equals(ACTION_GET_INSTALLATION_OBJECT_ID)) {
@@ -79,7 +86,7 @@ public class ParsePlugin extends CordovaPlugin {
         });
     }
 
-    private void getDeviceId(final CallbackContext callbackContext) {
+    private void getDeviceToken(final CallbackContext callbackContext) {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 String deviceToken = (String) ParseInstallation.getCurrentInstallation().get("deviceToken");
@@ -107,19 +114,33 @@ public class ParsePlugin extends CordovaPlugin {
     }
 
     private void subscribe(final String channel, final CallbackContext callbackContext) {
-        cordova.getThreadPool().execute(new Runnable() {
-            public void run() {
-                PushService.subscribe(cordova.getActivity(), channel, cordova.getActivity().getClass());
-                callbackContext.success();
+        Log.v(TAG, "subscribe: "+channel);
+        ParsePush.subscribeInBackground(channel, new SaveCallback() {
+            @Override
+            public void done(ParseException e) {
+                if (e == null) {
+                    Log.d("com.parse.push", "successfully subscribed to the broadcast channel.");
+                    callbackContext.success();
+                } else {
+                    Log.e("com.parse.push", "failed to subscribe to: "+channel, e);
+                    callbackContext.error("Failed to subscribe to "+channel);
+                }
             }
         });
     }
 
     private void unsubscribe(final String channel, final CallbackContext callbackContext) {
-        cordova.getThreadPool().execute(new Runnable() {
-            public void run() {
-                PushService.unsubscribe(cordova.getActivity(), channel);
-                callbackContext.success();
+        Log.v(TAG, "unsubscribe: "+channel);
+        ParsePush.unsubscribeInBackground(channel, new SaveCallback() {
+            @Override
+            public void done(ParseException e) {
+                if (e == null) {
+                    Log.d("com.parse.push", "successfully unssubscribed from "+channel);
+                    callbackContext.success();
+                } else {
+                    Log.e("com.parse.push", "Failed to unsubscribe from: "+channel, e);
+                    callbackContext.error("Failed to unsubscribe from: "+channel);
+                }
             }
         });
     }
